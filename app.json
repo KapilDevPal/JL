@@ -1,13 +1,20 @@
 {
   "expo": {
-    "name": "Stock",
-    "slug": "stock",
+    "name": "Stock Matrix",
+    "slug": "stock-matrix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.stockmatrix.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleDisplayName": "Stock Matrix"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,7 +23,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.stockmatrix.app",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,9 +54,20 @@
         }
       ]
     ],
-    "scheme": "stock",
+    "scheme": "stockmatrix",
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "akcatalyst",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "a703130d-d55b-428d-a307-157b806e0156"
+      }
     }
   }
 }
