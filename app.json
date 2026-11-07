@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "inventory",
-    "slug": "inventory",
+    "name": "Stock",
+    "slug": "stock",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +20,24 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to choose product photos.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to take product photos.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-font"
+    ],
+    "scheme": "stock",
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
