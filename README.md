@@ -4,6 +4,15 @@ A minimal inventory app for two locations, **Main Store** and **Warehouse**. Sta
 
 Built with Expo (SDK 58), Expo Router, TypeScript and Supabase (Postgres, Auth, Storage, Realtime). There is no custom backend.
 
+**Features**
+- **Products:** search, a list or grid view, up to 8 photos per product (the first is the cover) and stock at both locations.
+- **Requests:** Incoming, Outgoing and History tabs, with approve, reject and receive. Each request shows who requested, sent and received it.
+- **QR handover:** scan the QR code on the other person's phone to open a request with its action ready.
+- **Admin tools:** add or edit products, bulk import from CSV or Excel, and assign employees to a location with a display name.
+- **Live updates:** changes appear on other phones straight away. When offline, a banner shows and stock-changing buttons are disabled.
+
+Step-by-step setup is in [SETUP.md](SETUP.md).
+
 ## How it works
 
 | Step | Who | What happens |
@@ -20,11 +29,19 @@ Requests work in both directions. Partial transfers aren't supported.
 ## 1. Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Apply the migration in [supabase/migrations/20261107000000_inventory.sql](supabase/migrations/20261107000000_inventory.sql). Use either method:
-   - **SQL Editor**: paste the whole file and run it.
+2. Apply all four migrations in [supabase/migrations/](supabase/migrations/), in filename order. Use either method:
+   - **SQL Editor**: paste each whole file and run it, in this order: `20261107000000_inventory.sql`, `20261107010000_multiple_images.sql`, `20261107020000_bulk_import.sql`, `20261107030000_names_and_handlers.sql`.
    - **CLI**: run `npx supabase link --project-ref <ref>`, then `npx supabase db push`.
 
-The migration creates the tables, constraints, indexes, Row Level Security policies, functions, a private `product-images` storage bucket and the Realtime publication entries.
+The first migration creates the tables, constraints, indexes, Row Level Security policies, functions, a private `product-images` storage bucket and the Realtime publication entries. The second replaces the single `image_path` with an ordered `image_paths` list of up to 8 photos, where the first is the cover.
+
+The third adds `admin_import_products`, which bulk imports products in a single all-or-nothing transaction. Rows are matched to existing products by name, ignoring case: a match sets that product's stock, and any other name creates a new product.
+
+**Changes from the original spec, made later at the owner's request:**
+- Multiple images per product. The spec asked for one.
+- Bulk import from CSV or Excel. The app reads the first sheet with SheetJS, which is installed from the official SheetJS CDN because the npm copy is outdated. The import screen previews every row and blocks the import until the file has no errors. [templates/products-import-template.csv](templates/products-import-template.csv) shows the format.
+- Names on requests: `profiles.display_name` (set by the admin when assigning, defaulting to the email name), plus `requests.responded_by` and `requests.received_by`, which the transition functions record. Staff can read colleagues' profiles so names can be shown. Profiles stay read-only for clients.
+- QR handover. The spec listed barcode scanning under "do not build". A request shows a QR code (`stockreq:<id>`) to whoever is not taking the next step, and the person who is scans it from the Requests tab to open the request. The QR only opens the request; the database still checks who may approve or receive.
 
 ## 2. Auth
 
@@ -80,6 +97,10 @@ npx expo-doctor
 
 ## Testing the workflow
 
+### Test users and dummy data
+
+After applying all four migrations, run [supabase/seed.sql](supabase/seed.sql) in the SQL Editor. It creates five logins that all use the password `Test@12345`: `admin@example.com` (admin), `warehouse1@` and `warehouse2@example.com`, and `store1@` and `store2@example.com`. It also adds 12 sample products with stock and 2 pending requests. It's safe to re-run. Never run it on a live store, because everyone knows the password. [templates/sample-import-test.csv](templates/sample-import-test.csv) exercises the CSV import: it updates 2 seeded products and adds 3 new ones.
+
 ### Database tests
 
 [supabase/tests/](supabase/tests/) runs the whole workflow and the abuse cases against plain Postgres. It covers both directions, duplicate approval or receipt, insufficient stock, wrong-location actions, direct table writes, stale admin edits, storage permissions and anonymous access. A stub file stands in for Supabase's `auth` and `storage` schemas.
@@ -89,6 +110,9 @@ docker run -d --name stock-pg -e POSTGRES_PASSWORD=pw -p 55432:5432 postgres:15
 export PGPASSWORD=pw; P="psql -h localhost -p 55432 -U postgres"
 $P -f supabase/tests/00_supabase_stub.sql
 $P -f supabase/migrations/20261107000000_inventory.sql
+$P -f supabase/migrations/20261107010000_multiple_images.sql
+$P -f supabase/migrations/20261107020000_bulk_import.sql
+$P -f supabase/migrations/20261107030000_names_and_handlers.sql
 $P -f supabase/tests/10_workflow_test.sql   # each "EXPECT ..." line is followed by that error
 docker rm -f stock-pg
 ```
@@ -110,10 +134,14 @@ src/app/              Screens (Expo Router)
   (tabs)/requests.tsx Requests: Incoming, Outgoing, History
   request-new.tsx     Request modal
   request/[id].tsx    Request details modal
-  product-form.tsx    Add or edit product (admin)
+  product/[id].tsx    Product details with photo gallery
+  product-form.tsx    Add or edit product and photos (admin)
   assign.tsx          Assign employee to a location (admin)
+  import.tsx          Bulk import products from CSV or Excel (admin)
+  scan.tsx            Scan a request QR code
   sign-in.tsx, unassigned.tsx
 src/lib/              Supabase client, auth, data and Realtime sync, images, errors
 src/components/       Small UI pieces and theme
-supabase/             Migration and SQL tests
+supabase/             Migrations, SQL tests and seed.sql (test data)
+templates/            Sample CSV files for import
 ```

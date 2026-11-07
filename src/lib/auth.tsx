@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, location, is_admin')
+      .select('id, location, is_admin, display_name')
       .eq('id', userId)
       .maybeSingle();
     // Keep the last known profile if the network blips.

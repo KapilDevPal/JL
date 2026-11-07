@@ -26,14 +26,14 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 \echo 'EXPECT NOT_ALLOWED:'
 select public.admin_assign_employee('main@x.com', 'warehouse');
 \echo 'EXPECT NOT_ALLOWED:'
-select public.admin_save_product(null, 'Hack', null, 1, 1);
+select public.admin_save_product(null, 'Hack', '{}', 1, 1);
 \echo 'EXPECT permission denied (profiles update):'
 update public.profiles set is_admin = true, location = 'warehouse';
 select 'own profile visible' as check, location, is_admin from public.profiles;
 
 \echo '---- admin creates product with stock'
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
-select public.admin_save_product(null, '  Gold Earrings ', 'a.jpg', 5, 20) is not null as created;
+select public.admin_save_product(null, '  Gold Earrings ', '{a.jpg}', 5, 20) is not null as created;
 select name, location, quantity from public.products p join public.inventory i on i.product_id = p.id order by location;
 
 \echo '---- unassigned user sees nothing'
@@ -100,11 +100,13 @@ select 'after reverse' as check, location, quantity from public.inventory order 
 \echo '---- admin edit: stale expected stock is refused, current is accepted'
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 \echo 'EXPECT STOCK_CHANGED:'
-select public.admin_save_product((select id from public.products), 'Gold Earrings', 'b.jpg', 1, 1, 5, 20);
-select public.admin_save_product((select id from public.products), 'Gold Hoops', 'b.jpg', 12, 13, 12, 13) is not null as saved;
+select public.admin_save_product((select id from public.products), 'Gold Earrings', '{b.jpg}', 1, 1, 5, 20);
+select public.admin_save_product((select id from public.products), 'Gold Hoops', '{b.jpg,c.jpg}', 12, 13, 12, 13) is not null as saved;
 \echo 'EXPECT INVALID_QUANTITY:'
-select public.admin_save_product((select id from public.products), 'Gold Hoops', 'b.jpg', -1, 13, 12, 13);
-select name, image_path, location, quantity from public.products p join public.inventory i on i.product_id = p.id order by location;
+select public.admin_save_product((select id from public.products), 'Gold Hoops', '{b.jpg}', -1, 13, 12, 13);
+\echo 'EXPECT INVALID_IMAGES (duplicate path):'
+select public.admin_save_product((select id from public.products), 'Gold Hoops', '{b.jpg,b.jpg}', 12, 13, 12, 13);
+select name, image_paths, location, quantity from public.products p join public.inventory i on i.product_id = p.id order by location;
 
 \echo '---- storage policies'
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
@@ -125,3 +127,41 @@ select public.approve_request(gen_random_uuid());
 reset role;
 
 select 'publication tables' as check, string_agg(tablename, ', ' order by tablename) from pg_publication_tables where pubname = 'supabase_realtime';
+
+\echo '---- bulk import'
+set role authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+\echo 'EXPECT NOT_ALLOWED (employee import):'
+select public.admin_import_products('[{"name":"X","main_store":"1","warehouse":"1"}]');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+\echo 'EXPECT DUPLICATE_NAMES:'
+select public.admin_import_products('[{"name":"Ring","main_store":"1","warehouse":"1"},{"name":" ring ","main_store":"2","warehouse":"2"}]');
+\echo 'EXPECT INVALID_IMPORT_ROW 2 (negative), nothing saved:'
+select public.admin_import_products('[{"name":"Ring","main_store":"1","warehouse":"1"},{"name":"Chain","main_store":"-4","warehouse":"1"}]');
+select 'ring not created' as check, count(*) from public.products where name = 'Ring';
+select public.admin_import_products('[{"name":"Ring","main_store":"3","warehouse":"7"},{"name":"GOLD HOOPS","main_store":"40","warehouse":"50"}]') as result;
+select name, location, quantity from public.products p join public.inventory i on i.product_id = p.id order by name, location;
+reset role;
+
+\echo '---- names and who acted (needs migration 4)'
+set role authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select public.admin_assign_employee('wh@x.com', 'warehouse', 'Priya Sharma');
+select public.admin_assign_employee('main@x.com', 'main_store');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select 'staff see colleagues' as check, count(*) from public.profiles;
+insert into public.requests (product_id, quantity, from_location, to_location)
+  select id, 2, 'warehouse', 'main_store' from public.products where name = 'Ring';
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select status from public.approve_request((select id from public.requests where quantity = 2 and status = 'pending'));
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select status from public.complete_request((select id from public.requests where quantity = 2 and status = 'approved'));
+select r.status, c.display_name as requested_by, s.display_name as responded_by, d.display_name as received_by
+  from public.requests r
+  join public.profiles c on c.id = r.created_by
+  left join public.profiles s on s.id = r.responded_by
+  left join public.profiles d on d.id = r.received_by
+ where r.quantity = 2;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+select 'unassigned sees only self' as check, count(*) from public.profiles;
+reset role;

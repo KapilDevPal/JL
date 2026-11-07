@@ -52,11 +52,14 @@ function RootStack() {
 
         <Stack.Protected guard={isStaff}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="product/[id]" options={{ presentation: 'modal', title: 'Product' }} />
           <Stack.Screen name="request-new" options={{ presentation: 'modal', title: 'Request stock' }} />
           <Stack.Screen name="request/[id]" options={{ presentation: 'modal', title: 'Request' }} />
+          <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan QR code' }} />
           <Stack.Protected guard={isAdmin}>
             <Stack.Screen name="product-form" options={{ presentation: 'modal', title: 'Product' }} />
             <Stack.Screen name="assign" options={{ presentation: 'modal', title: 'Assign employee' }} />
+            <Stack.Screen name="import" options={{ presentation: 'modal', title: 'Import products' }} />
           </Stack.Protected>
         </Stack.Protected>
       </Stack>

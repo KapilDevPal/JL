@@ -57,7 +57,7 @@ export default function NewRequest() {
       <OfflineBanner />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.product}>
-          <ProductImage path={product.image_path} style={styles.image} />
+          <ProductImage path={product.image_paths[0]} style={styles.image} />
           <View style={styles.flex}>
             <Text style={type.heading}>{product.name}</Text>
             <Text style={type.label}>

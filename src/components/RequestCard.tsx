@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useData } from '@/lib/data';
 import { formatDate } from '@/lib/format';
 import { LOCATION_LABEL, type Location, type Product, type StockRequest } from '@/lib/types';
 import { canApprove, canReceive, useRequestActions } from '@/lib/useRequestActions';
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function RequestCard({ request, product, myLocation, actions, onPress }: Props) {
+  const { nameOf } = useData();
   const busy = actions.busyId === request.id;
   const showApprove = canApprove(request, myLocation);
   const showReceive = canReceive(request, myLocation);
@@ -24,7 +26,7 @@ export function RequestCard({ request, product, myLocation, actions, onPress }: 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
       <View style={styles.row}>
-        <ProductImage path={product?.image_path} style={styles.thumb} />
+        <ProductImage path={product?.image_paths[0]} style={styles.thumb} />
         <View style={styles.info}>
           <Text style={type.heading} numberOfLines={1}>
             {product?.name ?? 'Product'}
@@ -34,6 +36,22 @@ export function RequestCard({ request, product, myLocation, actions, onPress }: 
             {LOCATION_LABEL[request.from_location]} → {LOCATION_LABEL[request.to_location]}
           </Text>
         </View>
+      </View>
+      <View style={styles.people}>
+        <Text style={type.small} numberOfLines={1}>
+          Requested by <Text style={styles.person}>{nameOf(request.created_by)}</Text>
+        </Text>
+        {request.responded_by && (
+          <Text style={type.small} numberOfLines={1}>
+            {request.status === 'rejected' ? 'Rejected by ' : 'Sent by '}
+            <Text style={styles.person}>{nameOf(request.responded_by)}</Text>
+          </Text>
+        )}
+        {request.received_by && (
+          <Text style={type.small} numberOfLines={1}>
+            Received by <Text style={styles.person}>{nameOf(request.received_by)}</Text>
+          </Text>
+        )}
       </View>
       <View style={styles.meta}>
         <StatusPill status={request.status} />
@@ -86,6 +104,8 @@ const styles = StyleSheet.create({
   thumb: { width: 72, height: 72, borderRadius: radius.md },
   info: { flex: 1, gap: 2 },
   qty: { fontSize: 16, fontWeight: '600', color: colors.champagneDark },
+  people: { gap: 2 },
+  person: { color: colors.text, fontWeight: '600' },
   meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   actions: { flexDirection: 'row', gap: space.sm },
   flex: { flex: 1 },

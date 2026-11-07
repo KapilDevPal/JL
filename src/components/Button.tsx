@@ -10,10 +10,11 @@ type Props = {
   variant?: Variant;
   disabled?: boolean;
   loading?: boolean;
+  size?: 'normal' | 'small';
   style?: StyleProp<ViewStyle>;
 };
 
-export function Button({ title, onPress, variant = 'primary', disabled, loading, style }: Props) {
+export function Button({ title, onPress, variant = 'primary', disabled, loading, size = 'normal', style }: Props) {
   const inactive = disabled || loading;
   return (
     <Pressable
@@ -24,6 +25,7 @@ export function Button({ title, onPress, variant = 'primary', disabled, loading,
       style={({ pressed }) => [
         styles.base,
         styles[variant],
+        size === 'small' && styles.small,
         pressed && styles.pressed,
         inactive && styles.disabled,
         style,
@@ -31,7 +33,7 @@ export function Button({ title, onPress, variant = 'primary', disabled, loading,
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? '#FFFFFF' : colors.text} />
       ) : (
-        <Text style={[styles.text, variant === 'primary' ? styles.textPrimary : variant === 'danger' ? styles.textDanger : null]}>
+        <Text style={[styles.text, size === 'small' && styles.textSmall, variant === 'primary' ? styles.textPrimary : variant === 'danger' ? styles.textDanger : null]}>
           {title}
         </Text>
       )}
@@ -50,6 +52,8 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: colors.champagne },
   secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   danger: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.dangerSoft },
+  small: { minHeight: 38, borderRadius: radius.sm, paddingHorizontal: 14 },
+  textSmall: { fontSize: 14 },
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.45 },
   text: { fontSize: 16, fontWeight: '600', color: colors.text },

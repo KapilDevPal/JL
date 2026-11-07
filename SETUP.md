@@ -15,7 +15,28 @@ Follow these steps in order. Part A is done on the Supabase website, Part B in t
 - [ ] Click **Run**. You should see "Success. No rows returned".
 - [ ] Check **Table Editor**. It should list `profiles`, `products`, `inventory` and `requests`.
 
-Run this file only once. Running it a second time fails because the tables already exist.
+- [ ] Open another **New query**, paste all of [supabase/migrations/20261107010000_multiple_images.sql](supabase/migrations/20261107010000_multiple_images.sql) and click **Run**. This adds multiple photos per product. If you already have products, their existing photo becomes the cover photo.
+- [ ] Open another **New query**, paste all of [supabase/migrations/20261107020000_bulk_import.sql](supabase/migrations/20261107020000_bulk_import.sql) and click **Run**. This adds bulk import from CSV or Excel.
+- [ ] Open another **New query**, paste all of [supabase/migrations/20261107030000_names_and_handlers.sql](supabase/migrations/20261107030000_names_and_handlers.sql) and click **Run**. This shows who requested, sent and received each request.
+
+Run each file only once, in this order. Running one a second time fails because its changes already exist.
+
+### Optional: add test users and dummy products
+For testing only. Don't do this on your live store.
+- [ ] Open a **New query**, paste all of [supabase/seed.sql](supabase/seed.sql) and click **Run**. It's safe to run again.
+- [ ] It creates these logins. They all use the password **`Test@12345`**:
+
+| Email | Role | Name |
+| --- | --- | --- |
+| admin@example.com | Administrator (and Main Store) | Admin |
+| warehouse1@example.com | Warehouse | Ravi Kumar |
+| warehouse2@example.com | Warehouse | Neha Singh |
+| store1@example.com | Main Store | Priya Sharma |
+| store2@example.com | Main Store | Arjun Mehta |
+
+It also adds 12 jewellery products with stock (no photos) and 2 pending requests. To try CSV import, sign in as admin, tap the upload icon and choose [templates/sample-import-test.csv](templates/sample-import-test.csv). It updates 2 existing products and adds 3 new ones.
+
+If you seed test users, you can skip steps 4 and 5.
 
 ### 3. Turn off public sign-up
 - [ ] Open **Authentication → Sign In / Providers**.
@@ -89,8 +110,9 @@ npx expo start
 
 - [ ] Install **Expo Go** on your phone and scan the QR code shown in the terminal.
 - [ ] Sign in as the administrator.
-- [ ] Tap the **person icon** at the top of the Products tab and assign each employee to **Main Store** or **Warehouse**.
-- [ ] Tap **+** to add your products, each with a photo and its stock at both locations.
+- [ ] Tap the **person icon** at the top of the Products tab and assign each employee to **Main Store** or **Warehouse**. Fill in **Name shown on requests** so their real name appears instead of their email name.
+- [ ] Tap **+** to add your products, each with photos and its stock at both locations.
+- [ ] Or add many at once: tap the **upload icon** and choose a CSV or Excel file with the columns `Name`, `Main Store` and `Warehouse`. [templates/products-import-template.csv](templates/products-import-template.csv) is a ready-made example. Check the preview, then tap **Import**. Add photos afterwards with **Edit**.
 
 ### 10. Test with two phones
 - [ ] Phone A: sign in as a Main Store employee. Phone B: sign in as a Warehouse employee.
@@ -98,6 +120,14 @@ npx expo start
 - [ ] Phone B: the request appears under **Requests → Incoming**. Tap **Approve**.
 - [ ] Both phones: Warehouse stock goes down and the product shows "in transit".
 - [ ] Phone A: under **Requests → Outgoing**, tap **Received**. Main Store stock goes up.
+- [ ] The request shows who requested it, who sent it and who received it.
+
+### 11. Optional: hand over with a QR code
+Instead of finding the request in the list, staff can scan it:
+- **To approve:** the requester opens the request. A QR code appears on their screen. The sending location taps the **QR icon** on the Requests tab and scans it. The request opens with **Approve** ready.
+- **To receive:** whoever delivers the items opens the request on their phone and shows the QR code. The receiving location scans it, and the request opens with **Received** ready.
+
+Scanning only opens the request; the person still taps **Approve** or **Received**. The app asks for camera permission the first time.
 
 ## Troubleshooting
 

@@ -7,8 +7,15 @@ import { SUPABASE_KEY, SUPABASE_URL, supabase } from './supabase';
 export const IMAGE_BUCKET = 'product-images';
 const MAX_SIZE = 1200;
 
-/** Lets the user take or choose a square photo, then compresses it. Returns a local file URI. */
-export async function pickProductImage(source: 'camera' | 'library'): Promise<string | null> {
+export type PickedImage = {
+  /** Local file URI, for previewing. */
+  uri: string;
+  /** The compressed JPEG, base64 encoded, for uploading. */
+  base64: string;
+};
+
+/** Lets the user take or choose a square photo, then compresses it to JPEG. */
+export async function pickProductImage(source: 'camera' | 'library'): Promise<PickedImage | null> {
   if (source === 'camera') {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -34,14 +41,27 @@ export async function pickProductImage(source: 'camera' | 'library'): Promise<st
     context.resize(asset.width >= asset.height ? { width: MAX_SIZE } : { height: MAX_SIZE });
   }
   const rendered = await context.renderAsync();
-  const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7 });
-  return saved.uri;
+  const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
+  if (!saved.base64) throw new Error('Could not read the photo.');
+  return { uri: saved.uri, base64: saved.base64 };
 }
 
-/** Uploads a compressed local JPEG and returns its storage path. */
-export async function uploadProductImage(localUri: string): Promise<string> {
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/**
+ * Uploads a compressed JPEG and returns its storage path.
+ * Bytes come from base64 because fetch(fileUri).arrayBuffer() returns a tiny
+ * placeholder instead of the file contents on React Native.
+ */
+export async function uploadProductImage(image: PickedImage): Promise<string> {
+  const body = base64ToBytes(image.base64);
+  if (body.length < 1000) throw new Error('Could not read the photo.');
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
-  const body = await fetch(localUri).then((res) => res.arrayBuffer());
   const { error } = await supabase.storage
     .from(IMAGE_BUCKET)
     .upload(path, body, { contentType: 'image/jpeg', upsert: false });
@@ -49,8 +69,10 @@ export async function uploadProductImage(localUri: string): Promise<string> {
   return path;
 }
 
-export async function deleteProductImage(path: string): Promise<void> {
-  await supabase.storage.from(IMAGE_BUCKET).remove([path]);
+export const MAX_IMAGES = 8;
+
+export async function deleteProductImages(paths: string[]): Promise<void> {
+  if (paths.length) await supabase.storage.from(IMAGE_BUCKET).remove(paths);
 }
 
 /**

@@ -68,6 +68,7 @@ export default function TabsLayout() {
               {profile?.is_admin && (
                 <>
                   <HeaderIcon name="person-add-outline" label="Assign employee" onPress={() => router.push('/assign')} />
+                  <HeaderIcon name="cloud-upload-outline" label="Import products" onPress={() => router.push('/import')} />
                   <HeaderIcon name="add" label="Add product" onPress={() => router.push('/product-form')} />
                 </>
               )}
@@ -87,6 +88,9 @@ export default function TabsLayout() {
           tabBarBadgeStyle: { backgroundColor: colors.champagne, color: '#FFFFFF' },
           headerRight: () => (
             <View style={styles.headerRight}>
+              {location && (
+                <HeaderIcon name="qr-code-outline" label="Scan request QR code" onPress={() => router.push('/scan')} />
+              )}
               <AccountButton />
             </View>
           ),

@@ -13,6 +13,7 @@ import { LOCATION_LABEL, type Location } from '@/lib/types';
 export default function AssignEmployee() {
   const online = useIsOnline();
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [location, setLocation] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
   const lock = useRef(false);
@@ -24,10 +25,15 @@ export default function AssignEmployee() {
     lock.current = true;
     setSaving(true);
     try {
-      const { error } = await supabase.rpc('admin_assign_employee', { p_email: email.trim(), p_location: location });
+      const { error } = await supabase.rpc('admin_assign_employee', {
+        p_email: email.trim(),
+        p_location: location,
+        p_display_name: name.trim() || null,
+      });
       if (error) throw error;
-      Alert.alert('Employee assigned', `${email.trim()} now works at ${LOCATION_LABEL[location!]}.`);
+      Alert.alert('Employee assigned', `${name.trim() || email.trim()} now works at ${LOCATION_LABEL[location!]}.`);
       setEmail('');
+      setName('');
       setLocation(null);
     } catch (e) {
       Alert.alert('Could not assign employee', friendlyError(e));
@@ -51,6 +57,14 @@ export default function AssignEmployee() {
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="off"
+        />
+        <Field
+          label="Name shown on requests (optional)"
+          value={name}
+          onChangeText={setName}
+          maxLength={80}
+          autoCapitalize="words"
+          placeholder="Leave blank to keep their current name"
         />
         <View style={styles.group}>
           <Text style={type.label}>Location</Text>

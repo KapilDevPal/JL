@@ -8,12 +8,21 @@ const MESSAGES: Record<string, string> = {
   STOCK_CHANGED:
     'Stock changed while you were editing. The latest numbers are now shown. Check them and save again.',
   INVALID_QUANTITY: 'Quantities must be whole numbers of 0 or more.',
+  INVALID_IMAGES: 'A product can have up to 8 photos.',
+  INVALID_IMPORT_ROW: 'A row in the file has a missing name or an invalid quantity.',
+  DUPLICATE_NAMES: 'The file lists the same product name more than once.',
+  AMBIGUOUS_NAME: 'More than one existing product has a name from the file. Rename them so each name is unique.',
+  INVALID_IMPORT: 'The file must have between 1 and 1000 products.',
+  INVALID_NAME: 'Names can be up to 80 characters.',
+  UNSUPPORTED_FILE: 'Choose a .csv, .xlsx or .xls file.',
+  'Could not read the photo': 'Could not read that photo. Please try another one.',
   USER_NOT_FOUND: 'No account uses that email. Create the account first, then assign it.',
   'Invalid login credentials': 'Email or password is incorrect.',
   'Network request failed': 'No internet connection. Please try again when you are online.',
 };
 
 export function friendlyError(error: unknown): string {
+  if (__DEV__) console.warn('[app error]', error);
   const message =
     typeof error === 'object' && error !== null && 'message' in error
       ? String((error as { message: unknown }).message)

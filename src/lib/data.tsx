@@ -18,10 +18,16 @@ import type { Location, Product, StockRequest } from './types';
 
 const HISTORY_LIMIT = 100;
 
+export type Transit = { quantity: number; to: Location }[];
+
 type DataState = {
   products: Product[];
   requests: StockRequest[];
   productsById: Map<string, Product>;
+  /** Approved (sent) but not yet received, per product. */
+  inTransit: Map<string, Transit>;
+  /** Display name for a user id ("Unknown" if not found). */
+  nameOf: (userId: string | null | undefined) => string;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -36,14 +42,14 @@ type ProductRow = Omit<Product, 'stock'> & {
 function toProduct(row: ProductRow): Product {
   const stock: Record<Location, number> = { main_store: 0, warehouse: 0 };
   for (const item of row.inventory ?? []) stock[item.location] = item.quantity;
-  return { id: row.id, name: row.name, image_path: row.image_path, created_at: row.created_at, stock };
+  return { id: row.id, name: row.name, image_paths: row.image_paths ?? [], created_at: row.created_at, stock };
 }
 
 async function fetchAll() {
-  const [products, open, history] = await Promise.all([
+  const [products, open, history, people] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, image_path, created_at, inventory(location, quantity)')
+      .select('id, name, image_paths, created_at, inventory(location, quantity)')
       .order('name'),
     supabase
       .from('requests')
@@ -56,12 +62,16 @@ async function fetchAll() {
       .in('status', ['completed', 'rejected'])
       .order('created_at', { ascending: false })
       .limit(HISTORY_LIMIT),
+    supabase.from('profiles').select('id, display_name'),
   ]);
-  const error = products.error ?? open.error ?? history.error;
+  const error = products.error ?? open.error ?? history.error ?? people.error;
   if (error) throw error;
   return {
     products: ((products.data ?? []) as ProductRow[]).map(toProduct),
     requests: [...(open.data ?? []), ...(history.data ?? [])] as StockRequest[],
+    names: new Map(
+      ((people.data ?? []) as { id: string; display_name: string | null }[]).map((p) => [p.id, p.display_name]),
+    ),
   };
 }
 
@@ -73,6 +83,7 @@ async function fetchAll() {
 export function DataProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [requests, setRequests] = useState<StockRequest[]>([]);
+  const [names, setNames] = useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const online = useIsOnline();
@@ -97,6 +108,7 @@ export function DataProvider({ enabled, children }: { enabled: boolean; children
           if (!enabledRef.current) return;
           setProducts(next.products);
           setRequests(next.requests);
+          setNames(next.names);
           setError(null);
         } while (runAgain.current);
       } catch (e) {
@@ -182,8 +194,24 @@ export function DataProvider({ enabled, children }: { enabled: boolean; children
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
+  const nameOf = useCallback(
+    (userId: string | null | undefined) => (userId && names.get(userId)) || 'Unknown',
+    [names],
+  );
+
+  const inTransit = useMemo(() => {
+    const map = new Map<string, Transit>();
+    for (const r of requests) {
+      if (r.status !== 'approved') continue;
+      const list = map.get(r.product_id) ?? [];
+      list.push({ quantity: r.quantity, to: r.to_location });
+      map.set(r.product_id, list);
+    }
+    return map;
+  }, [requests]);
+
   return (
-    <DataContext.Provider value={{ products, requests, productsById, loading, error, refresh }}>
+    <DataContext.Provider value={{ products, requests, productsById, inTransit, nameOf, loading, error, refresh }}>
       {children}
     </DataContext.Provider>
   );

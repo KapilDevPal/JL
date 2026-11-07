@@ -11,6 +11,13 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   );
 }
 
+// A secret/service key bypasses every security rule and must never ship in an app.
+if (SUPABASE_KEY.startsWith('sb_secret_')) {
+  throw new Error(
+    'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is a SECRET key. Use the publishable key (sb_publishable_...) from Supabase > Project Settings > API Keys.',
+  );
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     storage: localStorage,

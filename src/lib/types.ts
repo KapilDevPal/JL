@@ -14,12 +14,14 @@ export type Profile = {
   id: string;
   location: Location | null;
   is_admin: boolean;
+  display_name: string | null;
 };
 
 export type Product = {
   id: string;
   name: string;
-  image_path: string | null;
+  /** Ordered storage paths; the first is the cover image. */
+  image_paths: string[];
   created_at: string;
   stock: Record<Location, number>;
 };
@@ -34,6 +36,10 @@ export type StockRequest = {
   to_location: Location;
   status: RequestStatus;
   created_by: string;
+  /** Source-location user who approved or rejected. */
+  responded_by: string | null;
+  /** Destination-location user who confirmed receipt. */
+  received_by: string | null;
   created_at: string;
   approved_at: string | null;
   completed_at: string | null;
